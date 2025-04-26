@@ -3,22 +3,19 @@ import Security
 
 class GeminiAPIService: GeminiAPIServicing {
     // MARK: - Properties
-    private let baseURL = "https://your-production-domain.com/api" // 生产环境使用 HTTPS
-    private let apiKey: String
+    private let baseURL = "https://generativelanguage.googleapis.com/v1beta/openai/" // Google Gemini OpenAI 相容端點
+    private let apiKey = APIKey.default
     private let session: URLSession
     private let maxRetries = 3
     private let timeoutInterval: TimeInterval = 30
     
     // MARK: - Initialization
-    init(apiKey: String) {
-        self.apiKey = apiKey
-        
+    init() {
         // 配置 URLSession
         let configuration = URLSessionConfiguration.default
         configuration.timeoutIntervalForRequest = timeoutInterval
         configuration.timeoutIntervalForResource = timeoutInterval
         configuration.waitsForConnectivity = true
-        
         self.session = URLSession(configuration: configuration)
     }
     
@@ -32,25 +29,24 @@ class GeminiAPIService: GeminiAPIServicing {
             do {
                 // 1. 准备请求负载
                 let requestBody: [String: Any] = [
+                    "model": "gemini-2.0-flash",
                     "messages": messages.map { message in
                         [
-                            "text": message.text,
-                            "sender": message.sender == .user ? "user" : "model",
-                            "timestamp": ISO8601DateFormatter().string(from: message.timestamp)
+                            "role": message.sender == .user ? "user" : "assistant",
+                            "content": message.text
                         ]
-                    },
-                    "roleId": rolePrompt
+                    }
                 ]
                 
                 // 2. 创建请求
-                guard let url = URL(string: "\(baseURL)/chat") else {
+                guard let url = URL(string: "\(baseURL)chat/completions") else {
                     throw APIError.invalidURL
                 }
                 
                 var request = URLRequest(url: url)
                 request.httpMethod = "POST"
                 request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
+                request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
                 request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
                 
                 // 3. 发送请求并处理响应
@@ -121,7 +117,7 @@ class GeminiAPIService: GeminiAPIServicing {
                 var request = URLRequest(url: url)
                 request.httpMethod = "POST"
                 request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
+                request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
                 request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
                 
                 // 3. 发送请求并处理响应

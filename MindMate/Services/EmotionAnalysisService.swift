@@ -3,8 +3,8 @@ import Foundation
 class EmotionAnalysisService: EmotionAnalysisServicing {
     private let geminiService: GeminiAPIServicing
     
-    init(apiKey: String) {
-        self.geminiService = GeminiAPIService(apiKey: apiKey)
+    init() {
+        self.geminiService = GeminiAPIService()
     }
     
     func analyzeEmotions(userMessagesText: [String]) async throws -> EmotionAnalysisResult {

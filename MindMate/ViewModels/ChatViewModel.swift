@@ -13,22 +13,20 @@ class ChatViewModel: ObservableObject {
     @Published var shouldNavigateToAnalysis: Bool = false
     @Published var emotionAnalysisResult: EmotionAnalysisResult? = nil
     
-    private let geminiService: GeminiAPIServicing
+    private let geminiService = GeminiChatService()
     private let speechService: SpeechRecognitionServicing
-    private let emotionService: EmotionAnalysisServicing = EmotionAnalysisService(apiKey: "AIzaSyASyd8SELTPYTkteFkNYLfc9wu7rEOC-d0")
+    private let emotionService: EmotionAnalysisServicing = EmotionAnalysisService()
     
     init(
         selectedRole: AIRole,
-        geminiService: GeminiAPIServicing = GeminiAPIService(apiKey: "AIzaSyASyd8SELTPYTkteFkNYLfc9wu7rEOC-d0"),
         speechService: SpeechRecognitionServicing = SpeechRecognitionService()
     ) {
         self.selectedRole = selectedRole
-        self.geminiService = geminiService
         self.speechService = speechService
     }
     
     func sendMessage(text: String) {
-        // 1. 创建用户消息并添加到消息列表
+        // 1. 新增用戶訊息
         let userMessage = ChatMessage(
             id: UUID(),
             text: text,
@@ -36,39 +34,24 @@ class ChatViewModel: ObservableObject {
             timestamp: Date()
         )
         messages.append(userMessage)
-        
-        // 2. 清空输入框
         currentInputText = ""
-        
-        // 3. 设置 AI 正在回复状态
         isAIReplying = true
-        
-        // 4. 异步调用 Gemini API
-        Task {
-            do {
-                let response = try await geminiService.sendMessage(
-                    messages: self.messages,
-                    rolePrompt: selectedRole.prompt
-                )
-                
-                // 5. 处理成功响应
-                await MainActor.run {
+
+        // 2. 呼叫 Gemini
+        geminiService.sendMessage(history: messages, userInput: text) { [weak self] response in
+            DispatchQueue.main.async {
+                if let response = response {
                     let aiMessage = ChatMessage(
                         id: UUID(),
                         text: response,
                         sender: .ai,
                         timestamp: Date()
                     )
-                    messages.append(aiMessage)
+                    self?.messages.append(aiMessage)
+                } else {
+                    // 你可以在這裡顯示錯誤訊息
                 }
-            } catch {
-                // 6. 处理错误
-                print("发送消息错误: \(error)")
-            }
-            
-            // 7. 重置 AI 回复状态
-            await MainActor.run {
-                isAIReplying = false
+                self?.isAIReplying = false
             }
         }
     }
