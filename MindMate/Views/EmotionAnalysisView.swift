@@ -13,7 +13,7 @@ struct EmotionAnalysisView: View {
                 // 主导情绪展示
                 if let dominantEmotion = viewModel.dominantEmotionChineseName {
                     VStack(spacing: 8) {
-                        Text("主导情绪")
+                        Text("主導情緒")
                             .font(.headline)
                             .foregroundColor(.secondary)
                         

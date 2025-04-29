@@ -27,4 +27,7 @@ MindMateBackend/coverage/
 .idea/
 .vscode/
 *.swp
-*.swo 
+*.swo
+
+# Additional files
+MindMate/GenerativeAI-Info.plist

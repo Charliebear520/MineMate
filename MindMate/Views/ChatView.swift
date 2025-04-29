@@ -59,7 +59,7 @@ struct ChatView: View {
                     Divider()
                     
                     HStack(alignment: .bottom, spacing: 12) {
-                        // 语音输入按钮
+                        // 語音輸入按鈕
                         Button(action: {
                             if viewModel.isRecording {
                                 viewModel.stopVoiceInput()
@@ -80,7 +80,7 @@ struct ChatView: View {
                             .background(Color(.systemGray6))
                             .cornerRadius(18)
                         
-                        // 发送按钮
+                        // 發送按鈕
                         Button(action: {
                             if !viewModel.currentInputText.isEmpty {
                                 viewModel.sendMessage(text: viewModel.currentInputText)
@@ -145,9 +145,9 @@ struct MessageRow: View {
 #Preview {
     ChatView(selectedRole: AIRole(
         id: "therapist",
-        name: "心理咨询师",
-        description: "专业的心理咨询服务",
-        prompt: "你是一位专业的心理咨询师",
+        name: "心理諮詢師",
+        description: "專業的心理諮詢服務",
+        prompt: "你是一位專業的心理諮詢師。請告訴我你的感受。",
         iconName: "heart.text.square.fill"
     ))
 } 

@@ -18,7 +18,8 @@ class EmotionAnalysisService: EmotionAnalysisServicing {
         - 平静 (calmness)
         
         每个情绪的强度范围是 0.0 到 1.0。
-        请确保返回的是有效的 JSON 格式。
+        
+        请**只回傳 JSON，不要加任何說明或標註**，例如：\n{"emotions": {"happiness": 0.7, "sadness": 0.2, ...}, "dominant_emotion": "happiness"}
         
         用户消息：
         \(userMessagesText.joined(separator: "\n"))
@@ -34,6 +35,9 @@ class EmotionAnalysisService: EmotionAnalysisServicing {
             )],
             rolePrompt: "你是一个专业的情绪分析助手，请分析用户消息中的情绪。"
         )
+        
+        // 解析响应前先印出內容
+        print("Gemini 回傳內容：\(response)")
         
         // 解析响应
         guard let data = response.data(using: .utf8) else {

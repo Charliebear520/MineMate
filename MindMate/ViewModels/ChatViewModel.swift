@@ -37,8 +37,20 @@ class ChatViewModel: ObservableObject {
         currentInputText = ""
         isAIReplying = true
 
-        // 2. 呼叫 Gemini
-        geminiService.sendMessage(history: messages, userInput: text) { [weak self] response in
+        // 2. 準備系統提示詞
+        let systemMessage = ChatMessage(
+            id: UUID(),
+            text: selectedRole.prompt,
+            sender: .ai,
+            timestamp: Date()
+        )
+        
+        // 3. 將系統提示詞添加到消息歷史的開頭
+        var messagesWithSystemPrompt = [systemMessage]
+        messagesWithSystemPrompt.append(contentsOf: messages)
+
+        // 4. 呼叫 Gemini
+        geminiService.sendMessage(history: messagesWithSystemPrompt, userInput: text) { [weak self] response in
             DispatchQueue.main.async {
                 if let response = response {
                     let aiMessage = ChatMessage(

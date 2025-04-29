@@ -3,7 +3,7 @@ import Security
 
 class GeminiAPIService: GeminiAPIServicing {
     // MARK: - Properties
-    private let baseURL = "https://generativelanguage.googleapis.com/v1beta/openai/" // Google Gemini OpenAI 相容端點
+    private let baseURL = "https://generativelanguage.googleapis.com/v1beta/models" // Google Gemini 官方 API 端點
     private let apiKey = APIKey.default
     private let session: URLSession
     private let maxRetries = 3
@@ -104,42 +104,50 @@ class GeminiAPIService: GeminiAPIServicing {
         
         while retryCount < maxRetries {
             do {
-                // 1. 准备请求负载
+                // 1. 準備 prompt
+                let prompt = userMessagesText.joined(separator: "\n")
                 let requestBody: [String: Any] = [
-                    "messages": userMessagesText
+                    "contents": [
+                        [
+                            "parts": [
+                                ["text": prompt]
+                            ]
+                        ]
+                    ]
                 ]
-                
-                // 2. 创建请求
-                guard let url = URL(string: "\(baseURL)/analyze-emotions") else {
+                // 2. 正確的 Gemini 端點
+                guard let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent") else {
                     throw APIError.invalidURL
                 }
-                
                 var request = URLRequest(url: url)
                 request.httpMethod = "POST"
                 request.setValue("application/json", forHTTPHeaderField: "Content-Type")
                 request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
                 request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
-                
-                // 3. 发送请求并处理响应
+                // 3. 發送請求
                 let (data, response) = try await session.data(for: request)
-                
                 guard let httpResponse = response as? HTTPURLResponse else {
                     throw APIError.invalidResponse
                 }
-                
                 switch httpResponse.statusCode {
                 case 200:
-                    // 4. 解析响应
-                    let decoder = JSONDecoder()
-                    let responseData = try decoder.decode(EmotionAnalysisResponse.self, from: data)
-                    return EmotionAnalysisResult(
-                        emotions: responseData.emotions,
-                        dominantEmotion: responseData.dominantEmotion
-                    )
-                    
+                    // 4. 解析 Gemini 回傳內容
+                    let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+                    // 解析 Gemini 回傳的文字內容
+                    if let contents = json?["candidates"] as? [[String: Any]],
+                       let first = contents.first,
+                       let content = first["content"] as? [String: Any],
+                       let parts = content["parts"] as? [[String: Any]],
+                       let text = parts.first?["text"] as? String,
+                       let textData = text.data(using: .utf8) {
+                        let decoder = JSONDecoder()
+                        let result = try decoder.decode(EmotionAnalysisResult.self, from: textData)
+                        return result
+                    } else {
+                        throw APIError.decodingError
+                    }
                 case 401:
                     throw APIError.unauthorized
-                    
                 case 429:
                     if let retryAfter = httpResponse.value(forHTTPHeaderField: "Retry-After") {
                         let delay = Double(retryAfter) ?? 1.0
@@ -148,24 +156,19 @@ class GeminiAPIService: GeminiAPIServicing {
                         continue
                     }
                     throw APIError.rateLimited
-                    
                 default:
                     throw APIError.serverError(statusCode: httpResponse.statusCode)
                 }
-                
             } catch {
                 lastError = error
                 retryCount += 1
-                
                 if case APIError.networkError = error {
                     try await Task.sleep(nanoseconds: UInt64(pow(2.0, Double(retryCount)) * 1_000_000_000))
                     continue
                 }
-                
                 throw error
             }
         }
-        
         throw lastError ?? APIError.maxRetriesExceeded
     }
 }

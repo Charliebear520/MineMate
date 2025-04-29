@@ -21,7 +21,7 @@ struct RoleSelectionView: View {
                 }
                 .padding()
             }
-            .navigationTitle("选择对话角色")
+            .navigationTitle("選擇對話角色")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {

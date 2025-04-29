@@ -13,13 +13,27 @@ class GeminiChatService {
 
     func sendMessage(history: [ChatMessage], userInput: String, completion: @escaping (String?) -> Void) {
         do {
-            let geminiHistory: [ModelContent] = try history.map {
-                try ModelContent(parts: [$0.text])
+            // 確保系統提示詞在第一個位置
+            let systemMessage = history.first { $0.sender == .ai }
+            let userMessages = history.filter { $0.sender == .user }
+            
+            // 構建 Gemini 歷史消息
+            var geminiHistory: [ModelContent] = []
+            
+            // 如果有系統提示詞，先添加
+            if let systemMessage = systemMessage {
+                geminiHistory.append(try ModelContent(parts: ["system", systemMessage.text]))
             }
+            
+            // 添加用戶消息
+            for message in userMessages {
+                geminiHistory.append(try ModelContent(parts: ["user", message.text]))
+            }
+            
             let chat = model.startChat(history: geminiHistory)
             Task {
                 do {
-                    let response = try await chat.sendMessage([try ModelContent(parts: [userInput])])
+                    let response = try await chat.sendMessage([try ModelContent(parts: ["user", userInput])])
                     completion(response.text)
                 } catch {
                     print("Gemini 回覆錯誤: \(error)")
