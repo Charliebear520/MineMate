@@ -86,6 +86,19 @@ class ChatViewModel: ObservableObject {
                 }
             }
         }
+
+        // 新增：每次發送訊息後自動分析整段對話情緒
+        Task {
+            let userMessages = messages.filter { $0.sender == .user }.map { $0.text }
+            do {
+                let result = try await geminiService.analyzeConversationEmotion(messages: userMessages)
+                await MainActor.run {
+                    self.conversationEmotionResult = result
+                }
+            } catch {
+                print("自動對話情緒分析失敗: \(error)")
+            }
+        }
     }
     
     func startVoiceInput() {
