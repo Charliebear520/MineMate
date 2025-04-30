@@ -13,7 +13,12 @@ struct MindMateApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RoleSelectionView()
+            TabView {
+                RoleSelectionView()
+                    .tabItem {
+                        Label("主頁", systemImage: "house")
+                    }
+            }
         }
     }
 }

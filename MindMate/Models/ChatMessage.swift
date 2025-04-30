@@ -11,16 +11,19 @@ struct ChatMessage: Identifiable, Equatable {
     let sender: Sender
     let timestamp: Date
     var isPending: Bool?
+    var emotionResult: EmotionAnalysisResult?
     
     init(id: UUID = UUID(), 
          text: String, 
          sender: Sender, 
          timestamp: Date = Date(), 
-         isPending: Bool? = nil) {
+         isPending: Bool? = nil,
+         emotionResult: EmotionAnalysisResult? = nil) {
         self.id = id
         self.text = text
         self.sender = sender
         self.timestamp = timestamp
         self.isPending = isPending
+        self.emotionResult = emotionResult
     }
 } 

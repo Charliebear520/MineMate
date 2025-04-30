@@ -12,10 +12,10 @@ class ChatViewModel: ObservableObject {
     @Published var showEmotionAnalysisOption: Bool = true
     @Published var shouldNavigateToAnalysis: Bool = false
     @Published var emotionAnalysisResult: EmotionAnalysisResult? = nil
+    @Published var conversationEmotionResult: EmotionAnalysisResult? = nil // 整段對話情緒
     
-    private let geminiService = GeminiChatService()
+    private let geminiService = GeminiAPIService()
     private let speechService: SpeechRecognitionServicing
-    private let emotionService: EmotionAnalysisServicing = EmotionAnalysisService()
     
     init(
         selectedRole: AIRole,
@@ -26,7 +26,6 @@ class ChatViewModel: ObservableObject {
     }
     
     func sendMessage(text: String) {
-        // 1. 新增用戶訊息
         let userMessage = ChatMessage(
             id: UUID(),
             text: text,
@@ -37,40 +36,60 @@ class ChatViewModel: ObservableObject {
         currentInputText = ""
         isAIReplying = true
 
-        // 2. 準備系統提示詞
+        let userMessageId = userMessage.id
+        Task {
+            do {
+                let emotion = try await geminiService.analyzeSingleMessageEmotion(text: text)
+                await MainActor.run {
+                    if let idx = self.messages.lastIndex(where: { $0.id == userMessageId }) {
+                        self.messages[idx].emotionResult = emotion
+                    }
+                }
+            } catch {
+                print("單條訊息情緒分析失敗: \(error)")
+            }
+        }
+
         let systemMessage = ChatMessage(
             id: UUID(),
             text: selectedRole.prompt,
             sender: .ai,
             timestamp: Date()
         )
-        
-        // 3. 將系統提示詞添加到消息歷史的開頭
         var messagesWithSystemPrompt = [systemMessage]
         messagesWithSystemPrompt.append(contentsOf: messages)
 
-        // 4. 呼叫 Gemini
-        geminiService.sendMessage(history: messagesWithSystemPrompt, userInput: text) { [weak self] response in
-            DispatchQueue.main.async {
-                if let response = response {
+        Task {
+            do {
+                let response = try await geminiService.sendMessage(messages: messagesWithSystemPrompt, rolePrompt: selectedRole.prompt)
+                await MainActor.run {
                     let aiMessage = ChatMessage(
                         id: UUID(),
                         text: response,
                         sender: .ai,
                         timestamp: Date()
                     )
-                    self?.messages.append(aiMessage)
-                } else {
-                    // 你可以在這裡顯示錯誤訊息
+                    self.messages.append(aiMessage)
+                    self.isAIReplying = false
                 }
-                self?.isAIReplying = false
+            } catch {
+                print("AI 回覆失敗: \(error)")
+                await MainActor.run {
+                    let errorMessage = ChatMessage(
+                        id: UUID(),
+                        text: "[AI 回覆失敗：\(error.localizedDescription)]",
+                        sender: .ai,
+                        timestamp: Date()
+                    )
+                    self.messages.append(errorMessage)
+                    self.isAIReplying = false
+                }
             }
         }
     }
     
     func startVoiceInput() {
         guard !isRecording else { return }
-        
         speechService.requestAuthorization { [weak self] authorized in
             guard authorized else {
                 print("未获得语音识别权限")
@@ -105,14 +124,14 @@ class ChatViewModel: ObservableObject {
         isRecording = false
     }
     
-    // 新增情緒分析請求方法
+    // 整段對話情緒分析（用戶主動觸發）
     func requestEmotionAnalysis() {
         Task {
             let userMessages = messages.filter { $0.sender == .user }.map { $0.text }
             do {
-                let result = try await emotionService.analyzeEmotions(userMessagesText: userMessages)
+                let result = try await geminiService.analyzeConversationEmotion(messages: userMessages)
                 await MainActor.run {
-                    self.emotionAnalysisResult = result
+                    self.conversationEmotionResult = result
                     self.shouldNavigateToAnalysis = true
                 }
             } catch {

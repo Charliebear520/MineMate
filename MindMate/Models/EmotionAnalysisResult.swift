@@ -1,6 +1,6 @@
 import Foundation
 
-struct EmotionAnalysisResult: Codable {
+struct EmotionAnalysisResult: Codable, Equatable {
     let emotions: [String: Double]
     let dominantEmotion: String?
     
