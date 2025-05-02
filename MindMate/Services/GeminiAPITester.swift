@@ -169,17 +169,4 @@ class GeminiAPITester {
             throw error
         }
     }
-    
-    struct EmotionAnalysisResult: Codable {
-        let emotions: Emotions
-        let dominant_emotion: String
-        
-        struct Emotions: Codable {
-            let happiness: Double
-            let sadness: Double
-            let anger: Double
-            let anxiety: Double
-            let calmness: Double
-        }
-    }
 } 

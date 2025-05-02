@@ -2,7 +2,7 @@ import SwiftUI
 
 struct APITestView: View {
     @State private var response: String = ""
-    @State private var emotionResult: GeminiAPITester.EmotionAnalysisResult?
+    @State private var emotionResult: EmotionAnalysisResult?
     @State private var isLoading = false
     @State private var error: Error?
     @State private var testText: String = "我今天感到非常開心，因為完成了一個重要的項目！"
@@ -66,16 +66,14 @@ struct APITestView: View {
                     
                     HStack {
                         Text("主要情緒：")
-                        Text(result.dominant_emotion)
+                        Text(result.dominantEmotion)
                             .foregroundColor(.blue)
                             .bold()
                     }
                     
-                    EmotionBarView(label: "快樂", value: result.emotions.happiness)
-                    EmotionBarView(label: "悲傷", value: result.emotions.sadness)
-                    EmotionBarView(label: "憤怒", value: result.emotions.anger)
-                    EmotionBarView(label: "焦慮", value: result.emotions.anxiety)
-                    EmotionBarView(label: "平靜", value: result.emotions.calmness)
+                    ForEach(Array(result.emotions.sorted(by: { $0.value > $1.value })), id: \.key) { emotion in
+                        EmotionBarView(label: emotion.key, value: emotion.value)
+                    }
                 }
                 .padding()
                 .background(Color.gray.opacity(0.1))

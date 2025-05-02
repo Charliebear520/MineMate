@@ -18,6 +18,11 @@ struct MindMateApp: App {
                     .tabItem {
                         Label("主頁", systemImage: "house")
                     }
+                
+                EmotionLibraryView()
+                    .tabItem {
+                        Label("情緒庫", systemImage: "heart.circle")
+                    }
             }
         }
     }

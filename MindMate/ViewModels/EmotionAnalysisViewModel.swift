@@ -22,11 +22,11 @@ class EmotionAnalysisViewModel: ObservableObject {
     // 获取情绪的中文名称
     func chineseName(for emotion: String) -> String {
         switch emotion {
-        case "happiness": return "快乐"
-        case "sadness": return "悲伤"
-        case "anger": return "愤怒"
-        case "anxiety": return "焦虑"
-        case "calmness": return "平静"
+        case "happiness": return "快樂"
+        case "sadness": return "悲傷"
+        case "anger": return "憤怒"
+        case "anxiety": return "焦慮"
+        case "calmness": return "平靜"
         default: return emotion
         }
     }
@@ -44,8 +44,7 @@ class EmotionAnalysisViewModel: ObservableObject {
     }
     
     // 获取主导情绪的中文名称
-    var dominantEmotionChineseName: String? {
-        guard let dominant = analysisResult.dominantEmotion else { return nil }
-        return chineseName(for: dominant)
+    var dominantEmotionChineseName: String {
+        return chineseName(for: analysisResult.dominantEmotion)
     }
 } 

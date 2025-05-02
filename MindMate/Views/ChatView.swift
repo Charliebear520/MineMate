@@ -56,9 +56,9 @@ struct ChatView: View {
                         }
                         .padding()
                     }
-                    .onChange(of: viewModel.messages) { _ in
+                    .onChange(of: viewModel.messages) { _, messages in
                         withAnimation {
-                            if let lastMessage = viewModel.messages.last {
+                            if let lastMessage = messages.last {
                                 proxy.scrollTo(lastMessage.id, anchor: .bottom)
                             }
                         }
@@ -121,7 +121,10 @@ struct ChatView: View {
             }
             .navigationDestination(isPresented: $viewModel.shouldNavigateToAnalysis) {
                 if let result = viewModel.conversationEmotionResult {
-                    EmotionAnalysisView(result: result)
+                    EmotionAnalysisView(
+                        messages: viewModel.messages,
+                        emotionResult: result
+                    )
                 } else {
                     // 分析中顯示 loading
                     VStack {
