@@ -2,20 +2,46 @@ import Foundation
 
 class EmotionLibraryViewModel: ObservableObject {
     @Published var emotionBalls: [EmotionBall] = []
+    @Published var latestEmotions: [String: Double] = [:]
     private let geminiService = GeminiAPIService()
     
     init() {
-        // TODO: 從本地存儲加載情緒球
         loadEmotionBalls()
+        updateLatestEmotions()
     }
     
-    private func loadEmotionBalls() {
-        // TODO: 實現本地存儲讀取
+    func loadEmotionBalls() {
+        // TODO: 從本地存儲加載情緒球數據
+        // 這裡暫時使用模擬數據
+        emotionBalls = [
+            EmotionBall(
+                conversation: [],
+                emotionAnalysis: EmotionAnalysisResult(
+                    emotions: [
+                        "happiness": 0.7,
+                        "sadness": 0.2,
+                        "anger": 0.1
+                    ],
+                    dominantEmotion: "happiness"
+                ),
+                summary: "今天心情不錯",
+                userNote: nil,
+                tags: ["開心", "放鬆"]
+            )
+        ]
+    }
+    
+    func updateLatestEmotions() {
+        // 獲取最新的情緒數據
+        if let latest = emotionBalls.last {
+            latestEmotions = latest.emotionAnalysis.emotions
+        }
     }
     
     func saveEmotionBall(_ emotionBall: EmotionBall) {
         emotionBalls.append(emotionBall)
-        // TODO: 實現本地存儲保存
+        // TODO: 保存到本地存儲
+        updateLatestEmotions()
     }
     
     func generateSummary(from messages: [ChatMessage]) async throws -> String {
@@ -42,6 +68,43 @@ class EmotionLibraryViewModel: ObservableObject {
         )
         
         return response
+    }
+    
+    // 獲取指定時間範圍的情緒數據
+    func getEmotionData(for timeRange: EmotionLibraryView.TimeRange) -> [EmotionDataPoint] {
+        let calendar = Calendar.current
+        let now = Date()
+        
+        let startDate: Date
+        switch timeRange {
+        case .day:
+            startDate = calendar.startOfDay(for: now)
+        case .week:
+            startDate = calendar.date(byAdding: .day, value: -7, to: now) ?? now
+        case .month:
+            startDate = calendar.date(byAdding: .month, value: -1, to: now) ?? now
+        }
+        
+        // 過濾指定時間範圍內的情緒球
+        let filteredBalls = emotionBalls.filter { ball in
+            ball.createdAt >= startDate && ball.createdAt <= now
+        }
+        
+        // 將情緒球數據轉換為數據點
+        var dataPoints: [EmotionDataPoint] = []
+        for ball in filteredBalls {
+            for (emotion, value) in ball.emotionAnalysis.emotions {
+                dataPoints.append(
+                    EmotionDataPoint(
+                        date: ball.createdAt,
+                        emotion: emotion,
+                        value: value
+                    )
+                )
+            }
+        }
+        
+        return dataPoints
     }
     
     func deleteEmotionBall(_ emotionBall: EmotionBall) {
