@@ -3,7 +3,7 @@ import SwiftUI
 struct EmotionAnalysisView: View {
     let messages: [ChatMessage]
     let emotionResult: EmotionAnalysisResult
-    @StateObject private var libraryViewModel = EmotionLibraryViewModel()
+    @EnvironmentObject var libraryViewModel: EmotionLibraryViewModel
     @State private var showingSaveSheet = false
     @State private var showingSuccessAlert = false
     @Environment(\.dismiss) private var dismiss
@@ -47,7 +47,6 @@ struct EmotionAnalysisView: View {
             SaveEmotionBallView(
                 messages: messages,
                 emotionResult: emotionResult,
-                libraryViewModel: libraryViewModel,
                 showingSuccessAlert: $showingSuccessAlert,
                 dismiss: dismiss
             )
@@ -292,7 +291,7 @@ struct EmotionAnalysisView_Previews: PreviewProvider {
 struct SaveEmotionBallView: View {
     let messages: [ChatMessage]
     let emotionResult: EmotionAnalysisResult
-    let libraryViewModel: EmotionLibraryViewModel
+    @EnvironmentObject var libraryViewModel: EmotionLibraryViewModel
     @Binding var showingSuccessAlert: Bool
     let dismiss: DismissAction
     

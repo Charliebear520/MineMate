@@ -2,7 +2,7 @@ import SwiftUI
 import Charts
 
 struct EmotionLibraryView: View {
-    @StateObject private var viewModel = EmotionLibraryViewModel()
+    @EnvironmentObject var viewModel: EmotionLibraryViewModel
     @State private var selectedTimeRange: TimeRange = .week
     @State private var selectedEmotionBall: EmotionBall?
     @State private var showingDetail = false
@@ -109,8 +109,11 @@ struct EmotionBallCard: View {
 }
 
 struct EmotionBallDetailView: View {
+    @EnvironmentObject var viewModel: EmotionLibraryViewModel
     let emotionBall: EmotionBall
     @Environment(\.dismiss) private var dismiss
+    @State private var showingEdit = false
+    @State private var showingDeleteAlert = false
     
     var body: some View {
         NavigationView {
@@ -159,10 +162,138 @@ struct EmotionBallDetailView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
+                    HStack {
+                        Button("編輯") {
+                            showingEdit = true
+                        }
+                        Button(role: .destructive) {
+                            showingDeleteAlert = true
+                        } label: {
+                            Image(systemName: "trash")
+                        }
+                    }
+                }
+                ToolbarItem(placement: .navigationBarLeading) {
                     Button("完成") {
                         dismiss()
                     }
                 }
+            }
+            .sheet(isPresented: $showingEdit) {
+                EditEmotionBallView(emotionBall: emotionBall, dismiss: dismiss)
+            }
+            .alert("確定要刪除這筆情緒記錄嗎？", isPresented: $showingDeleteAlert) {
+                Button("刪除", role: .destructive) {
+                    viewModel.deleteEmotionBall(emotionBall)
+                    dismiss()
+                }
+                Button("取消", role: .cancel) {}
+            }
+        }
+    }
+}
+
+// 編輯情緒球頁面
+struct EditEmotionBallView: View {
+    @EnvironmentObject var viewModel: EmotionLibraryViewModel
+    @State var emotionBall: EmotionBall
+    let dismiss: DismissAction
+    @Environment(\.dismiss) private var dismissSheet
+    @State private var userNote: String = ""
+    @State private var selectedTags: Set<String> = []
+    @State private var newTag: String = ""
+    
+    var body: some View {
+        NavigationView {
+            Form {
+                Section("預覽") {
+                    EmotionBallView(
+                        emotionBall: emotionBall,
+                        size: 150
+                    )
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                }
+                Section("備註") {
+                    TextEditor(text: $userNote)
+                        .frame(height: 100)
+                        .onAppear { userNote = emotionBall.userNote ?? "" }
+                }
+                Section(header: Text("情緒標籤")) {
+                    ForEach(Array(emotionBall.tags), id: \.self) { tag in
+                        Toggle(tag, isOn: Binding(
+                            get: { selectedTags.contains(tag) },
+                            set: { isSelected in
+                                if isSelected {
+                                    selectedTags.insert(tag)
+                                } else {
+                                    selectedTags.remove(tag)
+                                }
+                            }
+                        ))
+                    }
+                    HStack {
+                        TextField("新增標籤", text: $newTag)
+                        Button(action: {
+                            let trimmed = newTag.trimmingCharacters(in: .whitespaces)
+                            guard !trimmed.isEmpty else { return }
+                            selectedTags.insert(trimmed)
+                            newTag = ""
+                        }) {
+                            Image(systemName: "plus.circle.fill")
+                        }
+                    }
+                    if !selectedTags.isEmpty {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack {
+                                ForEach(Array(selectedTags), id: \.self) { tag in
+                                    HStack(spacing: 4) {
+                                        Text(tag)
+                                            .font(.caption)
+                                            .padding(.horizontal, 8)
+                                            .padding(.vertical, 4)
+                                            .background(Color.blue.opacity(0.1))
+                                            .foregroundColor(.blue)
+                                            .cornerRadius(8)
+                                        Button(action: { selectedTags.remove(tag) }) {
+                                            Image(systemName: "xmark.circle.fill")
+                                                .foregroundColor(.gray)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("編輯情緒球")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("取消") {
+                        dismissSheet()
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("儲存") {
+                        let updated = EmotionBall(
+                            id: emotionBall.id,
+                            conversation: emotionBall.conversation,
+                            emotionAnalysis: emotionBall.emotionAnalysis,
+                            summary: emotionBall.summary,
+                            userNote: userNote,
+                            tags: selectedTags,
+                            createdAt: emotionBall.createdAt
+                        )
+                        viewModel.updateEmotionBall(updated)
+                        dismissSheet()
+                        dismiss()
+                    }
+                }
+            }
+            .onAppear {
+                userNote = emotionBall.userNote ?? ""
+                selectedTags = emotionBall.tags
             }
         }
     }

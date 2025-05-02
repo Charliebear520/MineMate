@@ -1,38 +1,49 @@
 import Foundation
 
 class EmotionLibraryViewModel: ObservableObject {
-    @Published var emotionBalls: [EmotionBall] = []
+    @Published var emotionBalls: [EmotionBall] = [] {
+        didSet {
+            saveToStorage()
+        }
+    }
     @Published var latestEmotions: [String: Double] = [:]
     private let geminiService = GeminiAPIService()
+    private let storageKey = "EmotionBallsStorageKey"
     
     init() {
-        loadEmotionBalls()
+        loadFromStorage()
         updateLatestEmotions()
     }
     
+    // 永久保存
+    private func saveToStorage() {
+        do {
+            let data = try JSONEncoder().encode(emotionBalls)
+            UserDefaults.standard.set(data, forKey: storageKey)
+        } catch {
+            print("儲存情緒球失敗：\(error)")
+        }
+    }
+    
+    // 載入
+    private func loadFromStorage() {
+        if let data = UserDefaults.standard.data(forKey: storageKey) {
+            do {
+                emotionBalls = try JSONDecoder().decode([EmotionBall].self, from: data)
+            } catch {
+                print("載入情緒球失敗：\(error)")
+                emotionBalls = []
+            }
+        } else {
+            emotionBalls = []
+        }
+    }
+    
     func loadEmotionBalls() {
-        // TODO: 從本地存儲加載情緒球數據
-        // 這裡暫時使用模擬數據
-        emotionBalls = [
-            EmotionBall(
-                conversation: [],
-                emotionAnalysis: EmotionAnalysisResult(
-                    emotions: [
-                        "happiness": 0.7,
-                        "sadness": 0.2,
-                        "anger": 0.1
-                    ],
-                    dominantEmotion: "happiness"
-                ),
-                summary: "今天心情不錯",
-                userNote: nil,
-                tags: ["開心", "放鬆"]
-            )
-        ]
+        loadFromStorage()
     }
     
     func updateLatestEmotions() {
-        // 獲取最新的情緒數據
         if let latest = emotionBalls.last {
             latestEmotions = latest.emotionAnalysis.emotions
         }
@@ -40,7 +51,18 @@ class EmotionLibraryViewModel: ObservableObject {
     
     func saveEmotionBall(_ emotionBall: EmotionBall) {
         emotionBalls.append(emotionBall)
-        // TODO: 保存到本地存儲
+        updateLatestEmotions()
+    }
+    
+    func updateEmotionBall(_ emotionBall: EmotionBall) {
+        if let idx = emotionBalls.firstIndex(where: { $0.id == emotionBall.id }) {
+            emotionBalls[idx] = emotionBall
+            updateLatestEmotions()
+        }
+    }
+    
+    func deleteEmotionBall(_ emotionBall: EmotionBall) {
+        emotionBalls.removeAll { $0.id == emotionBall.id }
         updateLatestEmotions()
     }
     
@@ -56,7 +78,6 @@ class EmotionLibraryViewModel: ObservableObject {
         對話內容：
         \(messages.map { "\($0.sender == .user ? "我" : "AI"): \($0.text)" }.joined(separator: "\n"))
         """
-        
         let response = try await geminiService.sendMessage(
             messages: [ChatMessage(
                 id: UUID(),
@@ -66,15 +87,12 @@ class EmotionLibraryViewModel: ObservableObject {
             )],
             rolePrompt: "你是一個專業的日記撰寫助手，擅長將對話內容轉換成溫暖的日記。"
         )
-        
         return response
     }
     
-    // 獲取指定時間範圍的情緒數據
     func getEmotionData(for timeRange: EmotionLibraryView.TimeRange) -> [EmotionDataPoint] {
         let calendar = Calendar.current
         let now = Date()
-        
         let startDate: Date
         switch timeRange {
         case .day:
@@ -84,13 +102,9 @@ class EmotionLibraryViewModel: ObservableObject {
         case .month:
             startDate = calendar.date(byAdding: .month, value: -1, to: now) ?? now
         }
-        
-        // 過濾指定時間範圍內的情緒球
         let filteredBalls = emotionBalls.filter { ball in
             ball.createdAt >= startDate && ball.createdAt <= now
         }
-        
-        // 將情緒球數據轉換為數據點
         var dataPoints: [EmotionDataPoint] = []
         for ball in filteredBalls {
             for (emotion, value) in ball.emotionAnalysis.emotions {
@@ -103,12 +117,6 @@ class EmotionLibraryViewModel: ObservableObject {
                 )
             }
         }
-        
         return dataPoints
-    }
-    
-    func deleteEmotionBall(_ emotionBall: EmotionBall) {
-        emotionBalls.removeAll { $0.id == emotionBall.id }
-        // TODO: 從本地存儲中刪除
     }
 } 

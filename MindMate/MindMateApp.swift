@@ -9,7 +9,7 @@ import SwiftUI
 
 @main
 struct MindMateApp: App {
-    let persistenceController = PersistenceController.shared
+    @StateObject private var emotionLibraryViewModel = EmotionLibraryViewModel()
 
     var body: some Scene {
         WindowGroup {
@@ -24,6 +24,7 @@ struct MindMateApp: App {
                         Label("情緒庫", systemImage: "heart.circle")
                     }
             }
+            .environmentObject(emotionLibraryViewModel)
         }
     }
 }
