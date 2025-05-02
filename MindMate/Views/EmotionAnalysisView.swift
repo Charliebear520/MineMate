@@ -66,8 +66,11 @@ struct EmotionAnalysisView: View {
 struct EmotionStateView: View {
     let emotions: [String: Double]
     
-    private var sortedEmotions: [(String, Double)] {
-        emotions.sorted { $0.value > $1.value }
+    // 正規化後的情緒百分比
+    private var normalizedEmotions: [(String, Double)] {
+        let total = emotions.values.reduce(0, +)
+        guard total > 0 else { return emotions.map { ($0.key, 0.0) } }
+        return emotions.map { ($0.key, $0.value / total) }.sorted { $0.1 > $1.1 }
     }
     
     var body: some View {
@@ -75,19 +78,9 @@ struct EmotionStateView: View {
             Text("當前情緒狀態")
                 .font(.headline)
             
-            // 主要情緒徽章
-            HStack(spacing: 12) {
-                ForEach(sortedEmotions.prefix(2), id: \.0) { emotion in
-                    EmotionBadge(
-                        emotion: emotion.0,
-                        percentage: Int(emotion.1 * 100)
-                    )
-                }
-            }
-            
-            // 所有情緒條形圖
+            // 只顯示條形圖，無主情緒標籤
             VStack(spacing: 12) {
-                ForEach(sortedEmotions, id: \.0) { emotion in
+                ForEach(normalizedEmotions, id: \.0) { emotion in
                     HStack {
                         Text(emotion.0.localizedEmotionName)
                             .font(.subheadline)
