@@ -39,10 +39,6 @@ struct EmotionLibraryView: View {
                 ], spacing: 16) {
                     ForEach(viewModel.emotionBalls) { ball in
                         EmotionBallCard(emotionBall: ball)
-                            .onTapGesture {
-                                selectedEmotionBall = ball
-                                showingDetail = true
-                            }
                     }
                 }
                 .padding()
@@ -60,6 +56,7 @@ struct EmotionLibraryView: View {
 
 struct EmotionBallCard: View {
     let emotionBall: EmotionBall
+    @State private var showingDetail = false
     
     var body: some View {
         VStack(spacing: 12) {
@@ -105,6 +102,12 @@ struct EmotionBallCard: View {
         .background(Color(.systemBackground))
         .cornerRadius(16)
         .shadow(radius: 2)
+        .onTapGesture {
+            showingDetail = true
+        }
+        .sheet(isPresented: $showingDetail) {
+            EmotionBallDetailView(emotionBall: emotionBall)
+        }
     }
 }
 
@@ -181,6 +184,7 @@ struct EmotionBallDetailView: View {
             }
             .sheet(isPresented: $showingEdit) {
                 EditEmotionBallView(emotionBall: emotionBall, dismiss: dismiss)
+                    .environmentObject(viewModel)
             }
             .alert("確定要刪除這筆情緒記錄嗎？", isPresented: $showingDeleteAlert) {
                 Button("刪除", role: .destructive) {
