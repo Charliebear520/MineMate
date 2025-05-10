@@ -13,6 +13,7 @@ struct VideoGeneratorView: View {
     @State private var previewEmotionBall: EmotionBall? = nil
     @State private var showInfo = false
     @State private var showPromptSheet = false
+    @State private var showSuccessAlert = false
     
     private let veoService = VeoAPIService()
     
@@ -54,8 +55,13 @@ struct VideoGeneratorView: View {
                             }
                         }) {
                             HStack {
-                                Image(systemName: "wand.and.stars")
-                                Text(generatedPrompt.isEmpty ? "生成故事線" : "重新生成故事線")
+                                if isGeneratingPrompt {
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                } else {
+                                    Image(systemName: "wand.and.stars")
+                                }
+                                Text(isGeneratingPrompt ? "生成中..." : (generatedPrompt.isEmpty ? "生成故事線" : "重新生成故事線"))
                             }
                             .padding()
                             .frame(maxWidth: .infinity)
@@ -73,16 +79,6 @@ struct VideoGeneratorView: View {
                         .accessibilityLabel("故事線說明")
                     }
                     .padding(.horizontal)
-                    // 新增 loading 動畫
-                    if isGeneratingPrompt {
-                        HStack(spacing: 8) {
-                            ProgressView()
-                            Text("生成中...請稍候")
-                                .foregroundColor(.secondary)
-                                .font(.subheadline)
-                        }
-                        .padding(.top, 4)
-                    }
                 }
                 
                 // 显示生成的提示
@@ -153,6 +149,11 @@ struct VideoGeneratorView: View {
             } message: {
                 Text("根據你選擇的情緒球內容，AI會自動生成一段有故事感的文字，作為影片的腳本。")
             }
+            .alert("生成成功", isPresented: $showSuccessAlert) {
+                Button("確定", role: .cancel) { }
+            } message: {
+                Text("故事線已成功生成")
+            }
             .sheet(item: $previewEmotionBall) { ball in
                 EmotionBallPreviewSheet(emotionBall: $previewEmotionBall)
             }
@@ -166,6 +167,7 @@ struct VideoGeneratorView: View {
         isGeneratingPrompt = true
         do {
             generatedPrompt = try await veoService.generateStoryPrompt(from: Array(selectedEmotionBalls))
+            showSuccessAlert = true
         } catch {
             errorMessage = "生成故事線失敗：\(error.localizedDescription)"
             showError = true
