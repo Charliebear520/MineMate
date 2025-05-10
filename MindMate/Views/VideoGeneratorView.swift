@@ -11,6 +11,7 @@ struct VideoGeneratorView: View {
     @State private var showError = false
     @State private var errorMessage = ""
     @State private var previewEmotionBall: EmotionBall? = nil
+    @State private var showInfo = false
     
     private let veoService = VeoAPIService()
     
@@ -45,23 +46,32 @@ struct VideoGeneratorView: View {
                 
                 // 生成提示按钮
                 if !selectedEmotionBalls.isEmpty {
-                    Button(action: {
-                        Task {
-                            await generatePrompt()
+                    HStack(spacing: 8) {
+                        Button(action: {
+                            Task {
+                                await generatePrompt()
+                            }
+                        }) {
+                            HStack {
+                                Image(systemName: "wand.and.stars")
+                                Text(generatedPrompt.isEmpty ? "生成故事線" : "重新生成故事線")
+                            }
+                            .padding()
+                            .frame(maxWidth: .infinity)
+                            .background(Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
                         }
-                    }) {
-                        HStack {
-                            Image(systemName: "wand.and.stars")
-                            Text("生成故事線")
+                        .disabled(isGeneratingPrompt)
+                        // info icon
+                        Button(action: { showInfo = true }) {
+                            Image(systemName: "info.circle")
+                                .foregroundColor(.blue)
+                                .font(.title3)
                         }
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
+                        .accessibilityLabel("故事線說明")
                     }
                     .padding(.horizontal)
-                    .disabled(isGeneratingPrompt)
                 }
                 
                 // 显示生成的提示
@@ -116,6 +126,11 @@ struct VideoGeneratorView: View {
                 Button("確定", role: .cancel) { }
             } message: {
                 Text(errorMessage)
+            }
+            .alert("什麼是生成故事線？", isPresented: $showInfo) {
+                Button("我知道了", role: .cancel) { }
+            } message: {
+                Text("根據你選擇的情緒球內容，AI會自動生成一段有故事感的文字，作為影片的腳本。")
             }
             .sheet(item: $previewEmotionBall) { ball in
                 EmotionBallPreviewSheet(emotionBall: $previewEmotionBall)
