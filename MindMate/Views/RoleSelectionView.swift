@@ -1,29 +1,37 @@
 import SwiftUI
+import CoreData
 
 struct RoleSelectionView: View {
     @StateObject private var viewModel = RoleSelectionViewModel()
+    @Environment(\.managedObjectContext) private var context
+    @StateObject private var loginRecordVM = LoginRecordViewModel(context: PersistenceController.shared.container.viewContext)
     
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                LazyVGrid(columns: [
-                    GridItem(.flexible()),
-                    GridItem(.flexible())
-                ], spacing: 20) {
-                    ForEach(viewModel.availableRoles) { role in
-                        NavigationLink(destination: ChatView(selectedRole: role)) {
-                            RoleCard(role: role, isSelected: false)
-                                .frame(height: 180)
+        VStack(spacing: 0) {
+            DateBarView(viewModel: loginRecordVM)
+                .padding(.bottom, 8)
+            NavigationStack {
+                ScrollView {
+                    LazyVGrid(columns: [
+                        GridItem(.flexible()),
+                        GridItem(.flexible())
+                    ], spacing: 20) {
+                        ForEach(viewModel.availableRoles) { role in
+                            NavigationLink(destination: ChatView(selectedRole: role)) {
+                                RoleCard(role: role, isSelected: false)
+                                    .frame(height: 180)
+                            }
+                            .buttonStyle(PlainButtonStyle())
                         }
-                        .buttonStyle(PlainButtonStyle())
                     }
+                    .padding()
                 }
-                .padding()
-            }
-            .onAppear {
-                viewModel.loadRoles()
+                .onAppear {
+                    viewModel.loadRoles()
+                }
             }
         }
+        .background(Color.black.ignoresSafeArea())
     }
 }
 
