@@ -2,7 +2,6 @@ import SwiftUI
 
 struct RoleSelectionView: View {
     @StateObject private var viewModel = RoleSelectionViewModel()
-    @Environment(\.dismiss) private var dismiss
     
     var body: some View {
         NavigationStack {
@@ -20,15 +19,6 @@ struct RoleSelectionView: View {
                     }
                 }
                 .padding()
-            }
-            .navigationTitle("選擇對話角色")
-            .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("取消") {
-                        dismiss()
-                    }
-                }
             }
             .onAppear {
                 viewModel.loadRoles()

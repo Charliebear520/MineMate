@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreData
 
 struct EmotionAnalysisView: View {
     let messages: [ChatMessage]
@@ -439,5 +440,182 @@ struct SaveEmotionBallView: View {
         libraryViewModel.saveEmotionBall(emotionBall)
         dismissSheet()
         showingSuccessAlert = true
+    }
+}
+
+// AchievementType.swift
+enum AchievementType: String {
+    case streak = "連續記錄"
+    case totalEntries = "總記錄數"
+    case emotionOrbs = "情緒球收集"
+    case coins = "金幣收集"
+    
+    var localizedName: String {
+        switch self {
+        case .streak: return "連續記錄"
+        case .totalEntries: return "總記錄數"
+        case .emotionOrbs: return "情緒球收集"
+        case .coins: return "金幣收集"
+        }
+    }
+}
+
+// StoreItemType.swift
+enum StoreItemType: String {
+    case theme = "主題"
+    case animation = "動畫效果"
+    case feature = "功能"
+    
+    var localizedName: String {
+        switch self {
+        case .theme: return "主題"
+        case .animation: return "動畫效果"
+        case .feature: return "功能"
+        }
+    }
+}
+
+// AchievementManager.swift
+class AchievementManager {
+    static let shared = AchievementManager()
+    
+    // 預設成就列表
+    let defaultAchievements: [(AchievementType, String, String, Int64, Int64)] = [
+        (.streak, "初學者", "連續記錄3天", 3, 50),
+        (.streak, "持之以恆", "連續記錄7天", 7, 100),
+        (.streak, "習慣養成", "連續記錄30天", 30, 500),
+        (.totalEntries, "記錄新手", "完成10次記錄", 10, 50),
+        (.totalEntries, "記錄達人", "完成50次記錄", 50, 200),
+        (.emotionOrbs, "情緒收集者", "收集10個情緒球", 10, 100),
+        (.emotionOrbs, "情緒大師", "收集50個情緒球", 50, 300),
+        (.coins, "小富翁", "累積1000金幣", 1000, 100),
+        (.coins, "大富翁", "累積5000金幣", 5000, 500)
+    ]
+    
+    // 檢查並更新成就
+    func checkAchievements(for profile: UserProfile) {
+        let context = profile.managedObjectContext!
+        
+        for (type, title, description, requirement, reward) in defaultAchievements {
+            let fetchRequest: NSFetchRequest<Achievement> = Achievement.fetchRequest()
+            fetchRequest.predicate = NSPredicate(format: "title == %@ AND userProfile == %@", title, profile)
+            
+            do {
+                let results = try context.fetch(fetchRequest)
+                if results.isEmpty {
+                    // 創建新成就
+                    let achievement = Achievement(context: context)
+                    achievement.id = UUID()
+                    achievement.title = title
+                    achievement.desc = description
+                    achievement.type = type.rawValue
+                    achievement.requirement = requirement
+                    achievement.reward = reward
+                    achievement.isCompleted = false
+                    achievement.userProfile = profile
+                }
+            } catch {
+                print("檢查成就失敗：\(error)")
+            }
+        }
+        
+        // 更新成就狀態
+        updateAchievementStatus(for: profile)
+    }
+    
+    // 更新成就狀態
+    private func updateAchievementStatus(for profile: UserProfile) {
+        guard let achievements = profile.achievements as? Set<Achievement> else { return }
+        for achievement in achievements {
+            if achievement.isCompleted { continue }
+            let requirement = achievement.requirement
+            var currentValue: Int64 = 0
+            switch AchievementType(rawValue: achievement.type ?? "") {
+            case .streak:
+                currentValue = profile.currentStreak
+            case .totalEntries:
+                currentValue = profile.totalEntries
+            case .emotionOrbs:
+                currentValue = profile.emotionOrbs
+            case .coins:
+                currentValue = profile.coins
+            case .none:
+                continue
+            }
+            if currentValue >= requirement {
+                achievement.isCompleted = true
+                achievement.completedAt = Date()
+                profile.addCoins(achievement.reward)
+            }
+        }
+    }
+}
+
+// StoreManager.swift
+class StoreManager {
+    static let shared = StoreManager()
+    
+    // 預設商店項目
+    let defaultStoreItems: [(StoreItemType, String, String, String, Int64)] = [
+        (.theme, "深色主題", "解鎖深色模式", "moon.fill", 500),
+        (.theme, "彩虹主題", "解鎖彩虹主題", "rainbow", 1000),
+        (.animation, "煙花效果", "解鎖煙花動畫", "sparkles", 300),
+        (.animation, "心形效果", "解鎖心形動畫", "heart.fill", 300),
+        (.feature, "進階統計", "解鎖進階統計功能", "chart.bar.fill", 2000),
+        (.feature, "自訂標籤", "解鎖自訂標籤功能", "tag.fill", 1000)
+    ]
+    
+    // 初始化商店項目
+    func initializeStoreItems(for profile: UserProfile) {
+        let context = profile.managedObjectContext!
+        
+        for (type, name, description, iconName, price) in defaultStoreItems {
+            let fetchRequest: NSFetchRequest<StoreItem> = StoreItem.fetchRequest()
+            fetchRequest.predicate = NSPredicate(format: "name == %@ AND userProfile == %@", name, profile)
+            
+            do {
+                let results = try context.fetch(fetchRequest)
+                if results.isEmpty {
+                    let item = StoreItem(context: context)
+                    item.id = UUID()
+                    item.name = name
+                    item.desc = description
+                    item.iconName = iconName
+                    item.price = price
+                    item.type = type.rawValue
+                    item.isPurchased = false
+                    item.userProfile = profile
+                }
+            } catch {
+                print("初始化商店項目失敗：\(error)")
+            }
+        }
+    }
+    
+    // 購買商店項目
+    func purchaseItem(_ item: StoreItem, for profile: UserProfile) -> Bool {
+        guard !item.isPurchased else { return false }
+        
+        if profile.spendCoins(item.price) {
+            item.isPurchased = true
+            item.purchasedAt = Date()
+            return true
+        }
+        
+        return false
+    }
+}
+
+extension UserProfile {
+    func spendCoins(_ amount: Int64) -> Bool {
+        guard coins >= amount else { return false }
+        coins -= amount
+        updatedAt = Date()
+        return true
+    }
+    
+    func addCoins(_ amount: Int64) {
+        self.coins += amount
+        self.updatedAt = Date()
     }
 } 

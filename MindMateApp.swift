@@ -1,10 +1,3 @@
-//
-//  MindMateApp.swift
-//  MindMate
-//
-//  Created by 黃塏峻 on 2025/4/26.
-//
-
 import SwiftUI
 
 @main
@@ -14,8 +7,7 @@ struct MindMateApp: App {
     var body: some Scene {
         WindowGroup {
             MainTabView()
-                .environmentObject(EmotionLibraryViewModel())
                 .environment(\.managedObjectContext, persistenceController.container.viewContext)
         }
     }
-}
+} 
