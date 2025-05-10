@@ -12,6 +12,7 @@ struct AchievementView: View {
     ) var profiles: FetchedResults<UserProfile>
     @Environment(\.managedObjectContext) private var context
     @EnvironmentObject var libraryViewModel: EmotionLibraryViewModel
+    @State private var showCoinReward = false
 
     var body: some View {
         NavigationView {
@@ -30,40 +31,23 @@ struct AchievementView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color(.systemBackground))
             } else {
+                // 分組：未完成與已完成
+                let unfinished = achievements.filter { !$0.isRewarded }
+                let finished = achievements.filter { $0.isRewarded }
                 List {
-                    ForEach(achievements, id: \.type) { achievement in
-                        HStack(alignment: .center, spacing: 16) {
-                            Image(systemName: achievement.isCompleted ? "star.fill" : "star")
-                                .foregroundColor(achievement.isCompleted ? .yellow : .gray)
-                                .font(.title2)
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(achievement.title ?? "")
-                                    .font(.headline)
-                                    .foregroundColor(.primary)
-                                Text(achievement.desc ?? "")
-                                    .font(.subheadline)
-                                    .foregroundColor(.gray)
-                                if achievement.requirement > 0 {
-                                    ProgressView(value: Double(achievement.currentValue), total: Double(achievement.requirement))
-                                        .accentColor(.yellow)
-                                    Text("\(achievement.currentValue)/\(achievement.requirement)")
-                                        .font(.caption)
-                                        .foregroundColor(.gray)
-                                }
-                            }
-                            Spacer()
-                            if achievement.isCompleted && !achievement.isRewarded {
-                                Button("領取") {
-                                    claimReward(for: achievement)
-                                }
-                                .buttonStyle(.borderedProminent)
-                            } else if achievement.isRewarded {
-                                Text("已領取")
-                                    .foregroundColor(.green)
-                                    .font(.caption)
+                    if !unfinished.isEmpty {
+                        Section(header: Text("未完成")) {
+                            ForEach(unfinished, id: \ .type) { achievement in
+                                achievementRow(achievement)
                             }
                         }
-                        .padding(.vertical, 8)
+                    }
+                    if !finished.isEmpty {
+                        Section(header: Text("已完成").foregroundColor(.gray)) {
+                            ForEach(finished, id: \ .type) { achievement in
+                                achievementRow(achievement, isFinished: true)
+                            }
+                        }
                     }
                 }
                 .listStyle(.plain)
@@ -74,14 +58,83 @@ struct AchievementView: View {
                 }
             }
         }
+        .sheet(isPresented: $showCoinReward) {
+            VStack(spacing: 24) {
+                FireworkView()
+                    .frame(height: 180)
+                Image(systemName: "bitcoinsign.circle.fill")
+                    .resizable()
+                    .frame(width: 80, height: 80)
+                    .foregroundColor(.yellow)
+                Text("恭喜獲得200金幣！")
+                    .font(.title)
+                    .bold()
+                Button("確定") {
+                    showCoinReward = false
+                }
+                .font(.headline)
+                .padding(.top, 16)
+            }
+            .padding()
+        }
+    }
+
+    // 成就列元件
+    @ViewBuilder
+    private func achievementRow(_ achievement: Achievement, isFinished: Bool = false) -> some View {
+        HStack(alignment: .center, spacing: 16) {
+            Image(systemName: achievement.isCompleted ? "star.fill" : "star")
+                .foregroundColor(achievement.isCompleted ? .yellow : .gray)
+                .font(.title2)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(achievement.title ?? "")
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                Text(achievement.desc ?? "")
+                    .font(.subheadline)
+                    .foregroundColor(.gray)
+                if achievement.requirement > 0 {
+                    ProgressView(value: Double(achievement.currentValue), total: Double(achievement.requirement))
+                        .accentColor(.yellow)
+                    Text("\(achievement.currentValue)/\(achievement.requirement)")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                }
+            }
+            Spacer()
+            if achievement.isCompleted && !achievement.isRewarded {
+                Button("領取") {
+                    claimReward(for: achievement)
+                    showCoinReward = true
+                }
+                .buttonStyle(.borderedProminent)
+            } else if achievement.isRewarded {
+                Text("已領取")
+                    .foregroundColor(.green)
+                    .font(.caption)
+            }
+        }
+        .padding(.vertical, 8)
     }
 
     private func claimReward(for achievement: Achievement) {
         achievement.isRewarded = true
-        do {
-            try context.save()
-        } catch {
-            print("Failed to claim reward: \(error)")
+        // 取得目前用戶並加200金幣
+        let request: NSFetchRequest<UserProfile> = UserProfile.fetchRequest()
+        request.fetchLimit = 1
+        if let profile = (try? context.fetch(request))?.first {
+            profile.coins += 200
+            do {
+                try context.save()
+            } catch {
+                print("儲存金幣失敗: \(error)")
+            }
+        } else {
+            do {
+                try context.save()
+            } catch {
+                print("Failed to claim reward: \(error)")
+            }
         }
     }
 
@@ -129,6 +182,31 @@ struct AchievementView: View {
             }
         }
         return streak
+    }
+}
+
+// 簡單煙花動畫元件
+struct FireworkView: View {
+    @State private var animate = false
+    let colors: [Color] = [.red, .yellow, .blue, .green, .orange, .purple, .pink]
+    var body: some View {
+        ZStack {
+            ForEach(0..<8) { i in
+                Circle()
+                    .fill(colors[i % colors.count])
+                    .frame(width: 12, height: 12)
+                    .offset(y: animate ? -70 : 0)
+                    .rotationEffect(.degrees(Double(i) / 8 * 360))
+                    .opacity(animate ? 0 : 1)
+                    .animation(.easeOut(duration: 0.8).delay(Double(i) * 0.05), value: animate)
+            }
+        }
+        .onAppear {
+            animate = false
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                animate = true
+            }
+        }
     }
 }
 
