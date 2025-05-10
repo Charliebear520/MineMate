@@ -73,6 +73,16 @@ struct VideoGeneratorView: View {
                         .accessibilityLabel("故事線說明")
                     }
                     .padding(.horizontal)
+                    // 新增 loading 動畫
+                    if isGeneratingPrompt {
+                        HStack(spacing: 8) {
+                            ProgressView()
+                            Text("生成中...請稍候")
+                                .foregroundColor(.secondary)
+                                .font(.subheadline)
+                        }
+                        .padding(.top, 4)
+                    }
                 }
                 
                 // 显示生成的提示
