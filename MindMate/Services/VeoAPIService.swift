@@ -3,6 +3,7 @@ import Foundation
 class VeoAPIService {
     private let apiKey: String
     private let baseURL = "https://api.google.dev/v1/video/generate"
+    private let geminiService = GeminiAPIService()
     
     init(apiKey: String = ProcessInfo.processInfo.environment["GOOGLE_API_KEY"] ?? "") {
         self.apiKey = apiKey
@@ -43,27 +44,21 @@ class VeoAPIService {
     }
     
     func generateStoryPrompt(from emotionBalls: [EmotionBall]) async throws -> String {
-        // 构建提示
+        // 構建 prompt
         let prompt = """
-        请根据以下情绪记录生成一个温暖的故事线，用于制作一个情绪回顾视频：
-        
+        請根據以下情緒記錄生成一個溫暖的故事線，用於製作一個情緒回顧影片：\n\n\
         \(emotionBalls.map { ball in
             """
-            时间：\(ball.createdAt.formatted())
-            情绪：\(ball.dominantEmotions.map { "\($0.emotion)(\(Int($0.strength * 100))%)" }.joined(separator: ", "))
-            内容：\(ball.summary)
+            時間：\(ball.createdAt.formatted())
+            情緒：\(ball.dominantEmotions.map { "\($0.emotion)(\(Int($0.strength * 100))%)" }.joined(separator: ", "))
+            內容：\(ball.summary)
             """
         }.joined(separator: "\n\n"))
-        
-        要求：
-        1. 故事要有连贯性和情感起伏
-        2. 突出情绪变化的过程
-        3. 使用温暖、积极的语气
-        4. 适合制作成视频的形式
-        5. 长度控制在200字以内
+        \n要求：\n1. 故事要有連貫性和情感起伏\n2. 突出情緒變化的過程\n3. 使用溫暖、積極的語氣\n4. 適合製作成影片的形式\n5. 長度控制在200字以內
         """
-        
-        // TODO: 调用Gemini API生成故事线
-        return "这是一个关于你情绪变化的故事..."
+        let rolePrompt = "你是一位專業的情緒故事腳本生成助手，擅長將多段情緒記錄整合成一段有故事感的影片腳本。請根據用戶的情緒球內容，生成一段溫暖、正向、具備情感起伏的故事線。"
+        let chatMessage = ChatMessage(id: UUID(), text: prompt, sender: .user, timestamp: Date())
+        let result = try await geminiService.sendMessage(messages: [chatMessage], rolePrompt: rolePrompt)
+        return result
     }
 } 

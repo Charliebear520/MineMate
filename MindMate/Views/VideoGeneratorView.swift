@@ -12,6 +12,7 @@ struct VideoGeneratorView: View {
     @State private var errorMessage = ""
     @State private var previewEmotionBall: EmotionBall? = nil
     @State private var showInfo = false
+    @State private var showPromptSheet = false
     
     private let veoService = VeoAPIService()
     
@@ -79,10 +80,20 @@ struct VideoGeneratorView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("故事線預覽")
                             .font(.headline)
-                        Text(generatedPrompt)
+                        Button(action: { showPromptSheet = true }) {
+                            HStack(alignment: .top) {
+                                Text(generatedPrompt)
+                                    .foregroundColor(.primary)
+                                    .lineLimit(2)
+                                    .truncationMode(.tail)
+                                Spacer()
+                                Image(systemName: "doc.text.magnifyingglass")
+                                    .foregroundColor(.blue)
+                            }
                             .padding()
                             .background(Color(.systemGray6))
                             .cornerRadius(10)
+                        }
                         
                         // 生成视频按钮
                         Button(action: {
@@ -134,6 +145,9 @@ struct VideoGeneratorView: View {
             }
             .sheet(item: $previewEmotionBall) { ball in
                 EmotionBallPreviewSheet(emotionBall: $previewEmotionBall)
+            }
+            .sheet(isPresented: $showPromptSheet) {
+                StoryPromptFullSheet(prompt: generatedPrompt, onClose: { showPromptSheet = false })
             }
         }
     }
@@ -249,6 +263,56 @@ struct VideoPlayer: View {
     var body: some View {
         // TODO: 实现视频播放器
         Text("视频播放器")
+    }
+}
+
+struct StoryPromptFullSheet: View {
+    let prompt: String
+    let onClose: () -> Void
+    @State private var showCopyAlert = false
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    Text("完整故事線")
+                        .font(.title2)
+                        .bold()
+                    Text(prompt)
+                        .font(.body)
+                        .padding()
+                        .background(Color(.systemGray6))
+                        .cornerRadius(10)
+                    Button(action: {
+                        UIPasteboard.general.string = prompt
+                        showCopyAlert = true
+                    }) {
+                        HStack {
+                            Image(systemName: "doc.on.doc")
+                            Text("複製全文")
+                        }
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(Color.blue.opacity(0.1))
+                        .cornerRadius(8)
+                    }
+                }
+                .padding()
+            }
+            .navigationTitle("故事線全文")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("關閉") {
+                        onClose()
+                    }
+                }
+            }
+            .alert("已複製", isPresented: $showCopyAlert) {
+                Button("好", role: .cancel) { }
+            } message: {
+                Text("故事線已複製到剪貼簿")
+            }
+        }
     }
 }
 
