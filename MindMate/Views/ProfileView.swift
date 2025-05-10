@@ -1,11 +1,8 @@
 import SwiftUI
 
 struct ProfileView: View {
-    @State private var coins: Int = 1200
-    @State private var exp: Int = 350
-    @State private var level: Int = 5
-    @State private var streak: Int = 4
-    @State private var emotionBallCount: Int = 18
+    @EnvironmentObject var libraryViewModel: EmotionLibraryViewModel
+
     var body: some View {
         NavigationView {
             VStack(spacing: 24) {
@@ -14,11 +11,10 @@ struct ProfileView: View {
                         .resizable()
                         .frame(width: 60, height: 60)
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("金幣：\(coins)")
-                        Text("經驗值：\(exp)")
-                        Text("等級：\(level)")
-                        Text("連續登入：\(streak) 天")
-                        Text("情緒球數：\(emotionBallCount)")
+                        Text("金幣：\(libraryViewModel.fetchUserProfile()?.coins ?? 0)")
+                        Text("連續登入：\(libraryViewModel.fetchUserProfile()?.currentStreak ?? 0) 天")
+                        Text("情緒球數：\(libraryViewModel.emotionBalls.count)")
+                        // 你可以根據需要顯示更多資料
                     }
                 }
                 .padding()

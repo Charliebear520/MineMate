@@ -545,7 +545,8 @@ class AchievementManager {
             if currentValue >= requirement {
                 achievement.isCompleted = true
                 achievement.completedAt = Date()
-                profile.addCoins(achievement.reward)
+                profile.coins += achievement.reward
+                // 請在外層呼叫 try? context.save() 以儲存變更
             }
         }
     }
@@ -595,27 +596,13 @@ class StoreManager {
     // 購買商店項目
     func purchaseItem(_ item: StoreItem, for profile: UserProfile) -> Bool {
         guard !item.isPurchased else { return false }
-        
-        if profile.spendCoins(item.price) {
+        if profile.coins >= item.price {
+            profile.coins -= item.price
             item.isPurchased = true
             item.purchasedAt = Date()
+            // 請在外層呼叫 try? context.save() 以儲存變更
             return true
         }
-        
         return false
-    }
-}
-
-extension UserProfile {
-    func spendCoins(_ amount: Int64) -> Bool {
-        guard coins >= amount else { return false }
-        coins -= amount
-        updatedAt = Date()
-        return true
-    }
-    
-    func addCoins(_ amount: Int64) {
-        self.coins += amount
-        self.updatedAt = Date()
     }
 } 

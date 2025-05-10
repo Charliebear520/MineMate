@@ -1,4 +1,5 @@
 import Foundation
+import CoreData
 
 class EmotionLibraryViewModel: ObservableObject {
     @Published var emotionBalls: [EmotionBall] = [] {
@@ -7,12 +8,25 @@ class EmotionLibraryViewModel: ObservableObject {
         }
     }
     @Published var latestEmotions: [String: Double] = [:]
+    @Published var achievements: [Achievement] = []
     private let geminiService = GeminiAPIService()
     private let storageKey = "EmotionBallsStorageKey"
+    private let context = PersistenceController.shared.container.viewContext
     
     init() {
         loadFromStorage()
         updateLatestEmotions()
+        fetchAchievements()
+    }
+    
+    // Core Data 讀取成就
+    func fetchAchievements() {
+        let request: NSFetchRequest<Achievement> = Achievement.fetchRequest()
+        do {
+            achievements = try context.fetch(request)
+        } catch {
+            print("讀取成就失敗：\(error)")
+        }
     }
     
     // 永久保存
@@ -118,5 +132,50 @@ class EmotionLibraryViewModel: ObservableObject {
             }
         }
         return dataPoints
+    }
+    
+    // 領取成就獎勵
+    func claimReward(for achievement: Achievement) {
+        achievement.isRewarded = true
+        if let userProfile = fetchUserProfile() {
+            userProfile.coins += achievement.reward
+        }
+        do {
+            try context.save()
+            fetchAchievements() // 重新整理
+        } catch {
+            print("儲存領獎失敗：\(error)")
+        }
+    }
+
+    // 取得目前用戶（假設只會有一個 UserProfile）
+    func fetchUserProfile() -> UserProfile? {
+        let request: NSFetchRequest<UserProfile> = UserProfile.fetchRequest()
+        request.fetchLimit = 1
+        return (try? context.fetch(request))?.first
+    }
+    
+    func updateAchievementProgress() {
+        guard let userProfile = fetchUserProfile() else { return }
+        for achievement in achievements {
+            switch achievement.type {
+            case "streak":
+                achievement.currentValue = userProfile.currentStreak
+            case "totalEntries":
+                achievement.currentValue = userProfile.totalEntries
+            case "emotionOrbs":
+                achievement.currentValue = userProfile.emotionOrbs
+            case "coins":
+                achievement.currentValue = userProfile.coins
+            default:
+                break
+            }
+            // 自動判斷是否完成
+            if achievement.currentValue >= achievement.requirement {
+                achievement.isCompleted = true
+            }
+        }
+        try? context.save()
+        fetchAchievements()
     }
 } 
