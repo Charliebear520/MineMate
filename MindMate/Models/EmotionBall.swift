@@ -1,6 +1,6 @@
 import Foundation
 
-struct EmotionBall: Identifiable, Codable {
+struct EmotionBall: Identifiable, Codable, Hashable {
     let id: UUID
     let conversation: [ChatMessage]
     let emotionAnalysis: EmotionAnalysisResult
@@ -25,6 +25,14 @@ struct EmotionBall: Identifiable, Codable {
         self.userNote = userNote
         self.tags = tags
         self.createdAt = createdAt
+    }
+    
+    static func == (lhs: EmotionBall, rhs: EmotionBall) -> Bool {
+        lhs.id == rhs.id
+    }
+    
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
     }
 }
 

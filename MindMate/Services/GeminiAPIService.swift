@@ -335,36 +335,4 @@ private struct ChatResponse: Codable {
 private struct EmotionAnalysisResponse: Codable {
     let emotions: [String: Double]
     let dominantEmotion: String?
-}
-
-enum APIError: Error {
-    case invalidURL
-    case invalidResponse
-    case serverError(statusCode: Int)
-    case decodingError
-    case networkError(Error)
-    case unauthorized
-    case rateLimited
-    case maxRetriesExceeded
-    
-    var localizedDescription: String {
-        switch self {
-        case .invalidURL:
-            return "无效的 URL"
-        case .invalidResponse:
-            return "服务器响应无效"
-        case .serverError(let statusCode):
-            return "服务器错误，状态码：\(statusCode)"
-        case .decodingError:
-            return "响应解析失败"
-        case .networkError(let error):
-            return "网络错误：\(error.localizedDescription)"
-        case .unauthorized:
-            return "未授权访问"
-        case .rateLimited:
-            return "请求过于频繁，请稍后再试"
-        case .maxRetriesExceeded:
-            return "超过最大重试次数"
-        }
-    }
 } 
