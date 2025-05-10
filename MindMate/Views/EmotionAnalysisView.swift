@@ -7,7 +7,9 @@ struct EmotionAnalysisView: View {
     @EnvironmentObject var libraryViewModel: EmotionLibraryViewModel
     @State private var showingSaveSheet = false
     @State private var showingSuccessAlert = false
+    @State private var showCoinReward = false
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.managedObjectContext) private var context
     
     var body: some View {
         ScrollView {
@@ -49,6 +51,7 @@ struct EmotionAnalysisView: View {
                 messages: messages,
                 emotionResult: emotionResult,
                 showingSuccessAlert: $showingSuccessAlert,
+                showCoinReward: $showCoinReward,
                 dismiss: dismiss
             )
         }
@@ -58,6 +61,23 @@ struct EmotionAnalysisView: View {
             }
         } message: {
             Text("情緒記錄已保存到情緒庫，你可以在那裡查看情緒變化趨勢")
+        }
+        .sheet(isPresented: $showCoinReward) {
+            VStack(spacing: 24) {
+                Image(systemName: "bitcoinsign.circle.fill")
+                    .resizable()
+                    .frame(width: 80, height: 80)
+                    .foregroundColor(.yellow)
+                Text("恭喜獲得100金幣！")
+                    .font(.title)
+                    .bold()
+                Button("確定") {
+                    showCoinReward = false
+                }
+                .font(.headline)
+                .padding(.top, 16)
+            }
+            .padding()
         }
     }
 }
@@ -294,6 +314,7 @@ struct SaveEmotionBallView: View {
     let emotionResult: EmotionAnalysisResult
     @EnvironmentObject var libraryViewModel: EmotionLibraryViewModel
     @Binding var showingSuccessAlert: Bool
+    @Binding var showCoinReward: Bool
     let dismiss: DismissAction
     
     @Environment(\.dismiss) private var dismissSheet
@@ -303,6 +324,7 @@ struct SaveEmotionBallView: View {
     @State private var isGeneratingSummary = false
     @State private var useAISummary = true
     @State private var newTag: String = ""
+    @Environment(\.managedObjectContext) private var context
     
     var body: some View {
         NavigationView {
@@ -437,7 +459,9 @@ struct SaveEmotionBallView: View {
             userNote: useAISummary ? nil : userNote,
             tags: selectedTags
         )
-        libraryViewModel.saveEmotionBall(emotionBall)
+        libraryViewModel.addEmotionBall(emotionBall, context: context) {
+            showCoinReward = true
+        }
         dismissSheet()
         showingSuccessAlert = true
     }

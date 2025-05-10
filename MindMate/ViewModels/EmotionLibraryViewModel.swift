@@ -9,18 +9,17 @@ class EmotionLibraryViewModel: ObservableObject {
     }
     @Published var latestEmotions: [String: Double] = [:]
     @Published var achievements: [Achievement] = []
+    @Published var userProfile: UserProfile?
     private let geminiService = GeminiAPIService()
     private let storageKey = "EmotionBallsStorageKey"
-    private let context = PersistenceController.shared.container.viewContext
     
     init() {
         loadFromStorage()
         updateLatestEmotions()
-        fetchAchievements()
     }
     
     // Core Data 讀取成就
-    func fetchAchievements() {
+    func fetchAchievements(context: NSManagedObjectContext) {
         let request: NSFetchRequest<Achievement> = Achievement.fetchRequest()
         do {
             achievements = try context.fetch(request)
@@ -104,59 +103,49 @@ class EmotionLibraryViewModel: ObservableObject {
         return response
     }
     
-    func getEmotionData(for timeRange: EmotionLibraryView.TimeRange) -> [EmotionDataPoint] {
-        let calendar = Calendar.current
-        let now = Date()
-        let startDate: Date
-        switch timeRange {
-        case .day:
-            startDate = calendar.startOfDay(for: now)
-        case .week:
-            startDate = calendar.date(byAdding: .day, value: -7, to: now) ?? now
-        case .month:
-            startDate = calendar.date(byAdding: .month, value: -1, to: now) ?? now
-        }
-        let filteredBalls = emotionBalls.filter { ball in
-            ball.createdAt >= startDate && ball.createdAt <= now
-        }
-        var dataPoints: [EmotionDataPoint] = []
-        for ball in filteredBalls {
-            for (emotion, value) in ball.emotionAnalysis.emotions {
-                dataPoints.append(
-                    EmotionDataPoint(
-                        date: ball.createdAt,
-                        emotion: emotion,
-                        value: value
-                    )
-                )
+    // 取得目前用戶（假設只會有一個 UserProfile）
+    func fetchUserProfile(context: NSManagedObjectContext) -> UserProfile? {
+        let request: NSFetchRequest<UserProfile> = UserProfile.fetchRequest()
+        request.fetchLimit = 1
+        let profile = (try? context.fetch(request))?.first
+        self.userProfile = profile
+        return profile
+    }
+    
+    // 新增情緒球並加金幣
+    func addEmotionBall(_ ball: EmotionBall, context: NSManagedObjectContext, onReward: (() -> Void)? = nil) {
+        emotionBalls.append(ball)
+        let request: NSFetchRequest<UserProfile> = UserProfile.fetchRequest()
+        request.fetchLimit = 1
+        if let profile = (try? context.fetch(request))?.first {
+            profile.coins += 100
+            do {
+                try context.save()
+                self.userProfile = profile
+                print("coins after save: \(profile.coins)")
+                onReward?()
+            } catch {
+                print("儲存金幣失敗: \(error)")
             }
         }
-        return dataPoints
     }
     
     // 領取成就獎勵
-    func claimReward(for achievement: Achievement) {
+    func claimReward(for achievement: Achievement, context: NSManagedObjectContext) {
         achievement.isRewarded = true
-        if let userProfile = fetchUserProfile() {
+        if let userProfile = fetchUserProfile(context: context) {
             userProfile.coins += achievement.reward
+            do {
+                try context.save()
+                self.userProfile = userProfile
+            } catch {
+                print("儲存領獎失敗：\(error)")
+            }
         }
-        do {
-            try context.save()
-            fetchAchievements() // 重新整理
-        } catch {
-            print("儲存領獎失敗：\(error)")
-        }
-    }
-
-    // 取得目前用戶（假設只會有一個 UserProfile）
-    func fetchUserProfile() -> UserProfile? {
-        let request: NSFetchRequest<UserProfile> = UserProfile.fetchRequest()
-        request.fetchLimit = 1
-        return (try? context.fetch(request))?.first
     }
     
-    func updateAchievementProgress() {
-        guard let userProfile = fetchUserProfile() else { return }
+    func updateAchievementProgress(context: NSManagedObjectContext) {
+        guard let userProfile = fetchUserProfile(context: context) else { return }
         for achievement in achievements {
             switch achievement.type {
             case "streak":
@@ -170,12 +159,11 @@ class EmotionLibraryViewModel: ObservableObject {
             default:
                 break
             }
-            // 自動判斷是否完成
             if achievement.currentValue >= achievement.requirement {
                 achievement.isCompleted = true
             }
         }
         try? context.save()
-        fetchAchievements()
+        fetchAchievements(context: context)
     }
 } 

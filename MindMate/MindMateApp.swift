@@ -64,13 +64,42 @@ func createDefaultAchievementsIfNeeded(context: NSManagedObjectContext) {
     }
 }
 
+func createDefaultUserProfileIfNeeded(context: NSManagedObjectContext) {
+    let request: NSFetchRequest<UserProfile> = UserProfile.fetchRequest()
+    request.fetchLimit = 1
+    if (try? context.count(for: request)) == 0 {
+        let profile = UserProfile(context: context)
+        profile.id = UUID()
+        profile.coins = 0
+        profile.currentStreak = 0
+        profile.emotionOrbs = 0
+        profile.totalEntries = 0
+        try? context.save()
+    }
+}
+
+func debugPrintUserProfiles(context: NSManagedObjectContext) {
+    let request: NSFetchRequest<UserProfile> = UserProfile.fetchRequest()
+    if let profiles = try? context.fetch(request) {
+        print("[DEBUG] UserProfile count: \(profiles.count)")
+        for profile in profiles {
+            print("[DEBUG] Profile id: \(profile.id?.uuidString ?? "") coins: \(profile.coins)")
+        }
+    } else {
+        print("[DEBUG] 無法取得 UserProfile")
+    }
+}
+
 @main
 struct MindMateApp: App {
     let persistenceController = PersistenceController.shared
 
     init() {
-        deleteAllAchievements(context: persistenceController.container.viewContext)
-        createDefaultAchievementsIfNeeded(context: persistenceController.container.viewContext)
+        let context = persistenceController.container.viewContext
+        createDefaultUserProfileIfNeeded(context: context)
+        deleteAllAchievements(context: context)
+        createDefaultAchievementsIfNeeded(context: context)
+        debugPrintUserProfiles(context: context)
     }
 
     var body: some Scene {
